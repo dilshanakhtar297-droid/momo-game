@@ -14,7 +14,7 @@
     --gold:#f0b429;
     --gold-soft:#f7d174;
     --ink:#221414;
-    --paper:#fff7ea;
+    --paper:#fff7ea;per
     --jade:#1f6b52;
   }
   *{box-sizing:border-box;}
@@ -502,10 +502,11 @@
   const GAME_LEN = 60; // seconds
   const ITEMS = [
     { key:'veg',     emoji:'🥟',  points:10,  weight:30 },
-    { key:'chicken', emoji:'🍗',  points:15,  weight:24 },
-    { key:'golden',  emoji:'🌟',  points:50,  weight:6  },
-    { key:'burnt',   emoji:'🔥',  points:-10, weight:20 },
-    { key:'chili',   emoji:'🌶️', points:-20, weight:20 }
+    { key:'chicken', emoji:'🍗',  points:15,  weight:25 },
+    { key:'golden',  emoji:'🌟',  points:50,  weight:10 },
+    { key:'burnt',   emoji:'🔥',  points:-10, weight:15 },
+    { key:'chili',   emoji:'🌶️', points:-20, weight:10 },
+    { key:'time', emoji:'⏰', points:0, weight:0 }
   ];
   const TOTAL_WEIGHT = ITEMS.reduce((s,i)=>s+i.weight,0);
 
@@ -597,6 +598,7 @@
   let lastTs = null;
   let rafId = null;
   let timerId = null;
+  let bonusSpawned=false, bonusCaught=false;
   let lastSpawnX = null;
   const MAX_ON_SCREEN = 5;
 
@@ -604,7 +606,8 @@
     const rect = areaRect();
     if(fallItems.length >= MAX_ON_SCREEN) return; // keep screen readable
 
-    const def = pickItem();
+    let def = pickItem();
+    if(!bonusSpawned && !bonusCaught && timeLeft<=45 && timeLeft>=15 && Math.random()<0.08){def=ITEMS.find(i=>i.key=='time'); bonusSpawned=true;}
     const el = document.createElement('div');
     el.className = 'falling-item';
     el.textContent = def.emoji;
@@ -663,6 +666,7 @@
       if(!f.caught && f.y >= basketTop && f.y <= basketTop+30){
         if(Math.abs(f.x - basketPx) < catchRadius){
           f.caught = true;
+          if(f.def.key==='time'){const bonus=Math.random()<0.5?5:10; timeLeft+=bonus; timeVal.textContent=timeLeft; bonusCaught=true; showScorePopup(f.x,f.y,' +'+bonus+' SEC',true); sfxGood(true); bounceBasket(); f.el.remove(); fallItems.splice(i,1); continue;}
           const positive = f.def.points > 0;
           score += f.def.points;
           if(score < 0) score = 0;
@@ -703,10 +707,13 @@
 
     applyKeyMovement(dt);
     spawnTimer += dt;
+    if(timeLeft<=45 && timeLeft>30) spawnInterval=0.84;
+    else if(timeLeft<=30 && timeLeft>15) spawnInterval=0.68;
+    else if(timeLeft<=15) spawnInterval=0.52;
+    else spawnInterval=1.05;
     if(spawnTimer >= spawnInterval){
       spawnTimer = 0;
       spawnFallingItem();
-      if(spawnInterval > 0.6) spawnInterval -= 0.006;
     }
     updateItems(dt);
 
@@ -735,7 +742,7 @@
   }
 
   function startGame(){
-    score = 0; combo = 0; timeLeft = GAME_LEN; spawnTimer = 0; spawnInterval = 1.05; lastTs = null; lastSpawnX = null;
+    score = 0; combo = 0; timeLeft = GAME_LEN; bonusSpawned=false; bonusCaught=false; spawnTimer = 0; spawnInterval = 1.05; lastTs = null; lastSpawnX = null;
     scoreVal.textContent = 0;
     updateComboUI();
     timeVal.textContent = GAME_LEN;
